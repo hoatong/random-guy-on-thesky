@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Toggle } from "cc";
+import { _decorator, Component, Node, Toggle, UITransform, Vec3, view } from "cc";
 import { ConfirmRestore } from "./Popups/ConfirmRestore";
 import { LocalStorageManager } from "./Managers/LocalStorageManager";
 import { GameController } from "./GameController";
@@ -19,6 +19,9 @@ export class MenuController extends Component {
 
   @property(GameController)
   gameController: GameController = null;
+
+  @property(Node)
+  infoMenu: Node = null;
 
   start() {
     this.confirmRestore.node.active = false;
