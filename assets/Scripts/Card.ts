@@ -1,4 +1,4 @@
-import { _decorator, Component, Node, Sprite, SpriteFrame, UITransform } from "cc";
+import { _decorator, Component, Node, Sprite, SpriteFrame, Tween, tween, UITransform, Vec3 } from "cc";
 const { ccclass, property } = _decorator;
 
 @ccclass("Card")
@@ -17,35 +17,57 @@ export class Card extends Component {
 
   cardType = -1;
 
+  index = -1;
+
   isFlipped = false;
 
   start() {
     // handle touch event
     this.node.on(Node.EventType.TOUCH_END, () => {
-      // log card position
       if (this.onClickCB) {
         this.onClickCB(this.node);
       }
     });
   }
 
-  init(cardType: number, sprFrame: SpriteFrame, onClickCB: Function) {
+  init(index: number, cardType: number, sprFrame: SpriteFrame, onClickCB: Function) {
+    this.index = index;
     this.cardType = cardType;
     this.cardFrame = sprFrame;
     this.onClickCB = onClickCB;
+    this.node.scale = new Vec3(1, 1, 1);
 
     //scale sprite to fit card size
     const uiTransform = this.node.getComponent(UITransform);
     const size = uiTransform.contentSize;
-    this.cardSpriteNode.getComponent(UITransform).setContentSize(size.width, size.height);
+    this.cardSpriteNode.getComponent(UITransform).setContentSize(Math.min(size.width, size.height), Math.min(size.width, size.height));
   }
-  flip() {
+  flip(withAnim = true) {
     this.isFlipped = true;
-    this.cardSpriteNode.spriteFrame = this.cardFrame;
+    //tween scale to make it look like it's flipping
+    Tween.stopAllByTarget(this.node);
+    if (withAnim) {
+      tween(this.node)
+        .to(0.1, { scale: new Vec3(0, 1, 1) })
+        .call(() => {
+          this.cardSpriteNode.spriteFrame = this.cardFrame;
+        })
+        .to(0.1, { scale: new Vec3(1, 1, 1) })
+        .start();
+    } else {
+      this.cardSpriteNode.spriteFrame = this.cardFrame;
+    }
   }
   flipBack() {
     this.isFlipped = false;
-    this.cardSpriteNode.spriteFrame = this.backFrame;
+    Tween.stopAllByTarget(this.node);
+    //tween scale to make it look like it's flipping
+    tween(this.node)
+      .to(0.1, { scale: new Vec3(0, 1, 1) })
+      .call(() => {
+        this.cardSpriteNode.spriteFrame = this.backFrame;
+      })
+      .to(0.1, { scale: new Vec3(1, 1, 1) })
+      .start();
   }
-  update(deltaTime: number) {}
 }
