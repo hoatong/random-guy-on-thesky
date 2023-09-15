@@ -1,22 +1,16 @@
-import { _decorator, Component, Node, Toggle, UITransform, Vec3, view } from "cc";
-import { ConfirmRestore } from "./Popups/ConfirmRestore";
+import { _decorator, Component, error, game, JsonAsset, log, Node, resources, Toggle, UITransform, Vec3, view } from "cc";
+import { ConfirmRestore } from "./UI/ConfirmRestore";
 import { LocalStorageManager } from "./Managers/LocalStorageManager";
 import { GameController } from "./GameController";
 import { SoundManager } from "./Managers/SoundManager";
+import { UIManager } from "./Managers/UIManager";
+import { DemoPopup } from "./UI/DemoPopup";
+import { SelectLevelPopup } from "./UI/SelectLevelPopup";
+import { DataManager } from "./Managers/DataManager";
 const { ccclass, property } = _decorator;
 
 @ccclass("MenuController")
 export class MenuController extends Component {
-  @property(Toggle)
-  toggle1: Toggle = null;
-  @property(Toggle)
-  toggle2: Toggle = null;
-  @property(Toggle)
-  toggle3: Toggle = null;
-
-  @property(ConfirmRestore)
-  confirmRestore: ConfirmRestore = null;
-
   @property(GameController)
   gameController: GameController = null;
 
@@ -24,66 +18,57 @@ export class MenuController extends Component {
   infoMenu: Node = null;
 
   start() {
-    this.confirmRestore.node.active = false;
     const board = LocalStorageManager.getInstance().loadBoard();
 
     if (board.w && board.h && board.turnCount && board.matchedCount && board.boardState && board.boardPairs) {
-      this.confirmRestore.show(
-        () => {
-          this.gameController.initBoard(Number(board.w), Number(board.h), Number(board.turnCount), Number(board.matchedCount), board.boardState, board.boardPairs);
+      UIManager.getInstance().showUI(ConfirmRestore, {
+        onYes: () => {
+          this.gameController.initBoard(
+            Number(board.w),
+            Number(board.h),
+            Number(board.turnCount),
+            Number(board.matchedCount),
+            board.boardState,
+            board.boardPairs,
+            Number(board.maxMove)
+          );
         },
-        () => {
-          this.gameController.newGame(2, 2);
-        }
-      );
+        onNo: () => {
+          const levelConfig = DataManager.getInstance().getLevelConfig(0);
+          LocalStorageManager.getInstance().saveLevel(0);
+          this.gameController.newGame(levelConfig.width, levelConfig.height, levelConfig.maxMove);
+        },
+      });
     }
 
-    const level = LocalStorageManager.getInstance().loadLevel();
-    switch (level) {
-      case 0:
-        this.toggle1.isChecked = true;
-        break;
-      case 1:
-        this.toggle2.isChecked = true;
-        break;
-      case 2:
-        this.toggle3.isChecked = true;
-        break;
-    }
+    DataManager.getInstance().loadLevelData();
+
+    game.on("Game.EVENT_RESET", () => {
+      this.onNewGameButtonClicked();
+    });
+
+    game.on("Game.EVENT_SELECT_LEVEL", () => {
+      this.onSelectLevelButtonClicked(null, null);
+    });
+  }
+
+  protected onDestroy(): void {
+    game.off("Game.EVENT_RESET");
+    game.off("Game.EVENT_SELECT_LEVEL");
+  }
+
+  onSelectLevelButtonClicked(event, customEventData) {
+    UIManager.getInstance().showUI(SelectLevelPopup, {
+      onItemClick: (id) => {
+        const levelConfig = DataManager.getInstance().getLevelConfig(id);
+        LocalStorageManager.getInstance().saveLevel(id);
+        this.gameController.newGame(levelConfig.width, levelConfig.height, levelConfig.maxMove);
+      },
+    });
   }
 
   onNewGameButtonClicked() {
-    SoundManager.getInstance().playEffect(SoundManager.BUTTON_EFFECT);
-
-    let level = LocalStorageManager.getInstance().loadLevel();
-    switch (level) {
-      case 0:
-        this.gameController.newGame(2, 2);
-        break;
-      case 1:
-        this.gameController.newGame(3, 3);
-        break;
-      case 2:
-        this.gameController.newGame(5, 6);
-        break;
-    }
-  }
-
-  onSelectBoardSize(event, customEventData) {
-    SoundManager.getInstance().playEffect(SoundManager.BUTTON_EFFECT);
-    switch (customEventData) {
-      case "0":
-        this.gameController.newGame(2, 2);
-        LocalStorageManager.getInstance().saveLevel(0);
-        break;
-      case "1":
-        this.gameController.newGame(3, 3);
-        LocalStorageManager.getInstance().saveLevel(1);
-        break;
-      case "2":
-        this.gameController.newGame(5, 6);
-        LocalStorageManager.getInstance().saveLevel(2);
-        break;
-    }
+    const levelConfig = DataManager.getInstance().getLevelConfig(LocalStorageManager.getInstance().loadLevel());
+    this.gameController.newGame(levelConfig.width, levelConfig.height, levelConfig.maxMove);
   }
 }

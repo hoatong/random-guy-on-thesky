@@ -26,11 +26,12 @@ export class LocalStorageManager extends Component {
     return 0;
   }
 
-  saveBoard(w, h, turnCount, matchedCount, boardState, boardPairs) {
+  saveBoard(w, h, turnCount, matchedCount, boardState, boardPairs, maxMove) {
     localStorage.setItem("boardWidth", w);
     localStorage.setItem("boardHeight", h);
     localStorage.setItem("turnCount", turnCount);
     localStorage.setItem("matchedCount", matchedCount);
+    localStorage.setItem("maxMove", maxMove);
     this.saveArray("boardState", boardState);
     this.saveArray("boardPairs", boardPairs);
   }
@@ -40,9 +41,18 @@ export class LocalStorageManager extends Component {
     const h = localStorage.getItem("boardHeight");
     const turnCount = localStorage.getItem("turnCount");
     const matchedCount = localStorage.getItem("matchedCount");
+    const maxMove = localStorage.getItem("maxMove");
     const boardState = this.loadArray("boardState");
     const boardPairs = this.loadArray("boardPairs");
-    return { w, h, turnCount, matchedCount, boardState, boardPairs };
+    return {
+      w,
+      h,
+      turnCount,
+      matchedCount,
+      boardState,
+      boardPairs,
+      maxMove,
+    };
   }
 
   saveArray(key: string, arr: any[]) {

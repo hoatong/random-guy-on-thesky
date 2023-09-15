@@ -2,6 +2,8 @@ import { _decorator, Component, instantiate, Label, log, Node, Prefab, Size, Spr
 import { Card } from "./Card";
 import { SoundManager } from "./Managers/SoundManager";
 import { LocalStorageManager } from "./Managers/LocalStorageManager";
+import { UIManager } from "./Managers/UIManager";
+import { GameOverPopup } from "./UI/GameOverPopup";
 
 const { ccclass, property } = _decorator;
 
@@ -22,6 +24,8 @@ export class GameController extends Component {
   turnCountLabel: Label = null;
   @property(Label)
   matchedCountLabel: Label = null;
+  @property(Label)
+  maxTurnCountLabel: Label = null;
 
   boardSize: Size = null;
 
@@ -36,14 +40,16 @@ export class GameController extends Component {
   private flippedCards: Node[] = [];
   private matchedPairs = 0;
   private turnCount = 0;
+  private maxMove = 0;
   private boardPairs = [];
   private boardState = []; // 0: not flipped, 1: flipped, 2: matched
 
-  initBoard(w, h, turnCount, matchedCount, boardState, boardPairs) {
+  initBoard(w, h, turnCount, matchedCount, boardState, boardPairs, maxMove) {
     this.BOARD_WIDTH = w;
     this.BOARD_HEIGHT = h;
     this.turnCount = turnCount;
     this.matchedPairs = matchedCount;
+    this.maxMove = maxMove;
     this.boardState = boardState;
     this.boardPairs = boardPairs;
 
@@ -105,7 +111,7 @@ export class GameController extends Component {
     this.updateLabels();
   }
 
-  newGame(w, h) {
+  newGame(w, h, maxTurnCount = 100) {
     SoundManager.getInstance().playEffect(SoundManager.BUTTON_EFFECT);
 
     this.BOARD_WIDTH = w;
@@ -113,6 +119,7 @@ export class GameController extends Component {
 
     this.turnCount = 0;
     this.matchedPairs = 0;
+    this.maxMove = maxTurnCount;
 
     // random board pairs
     this.boardPairs = [];
@@ -135,12 +142,13 @@ export class GameController extends Component {
     }
     // log(this.boardPairs);
 
-    this.initBoard(this.BOARD_WIDTH, this.BOARD_HEIGHT, this.turnCount, this.matchedPairs, this.boardState, this.boardPairs);
+    this.initBoard(this.BOARD_WIDTH, this.BOARD_HEIGHT, this.turnCount, this.matchedPairs, this.boardState, this.boardPairs, this.maxMove);
   }
 
   updateLabels() {
     this.turnCountLabel.string = `Turns: ${this.turnCount}`;
     this.matchedCountLabel.string = `Matched: ${this.matchedPairs}`;
+    this.maxTurnCountLabel.string = `Max Turns: ${this.maxMove}`;
   }
 
   onCardClick(card: Node) {
@@ -163,6 +171,7 @@ export class GameController extends Component {
           this.boardState[this.flippedCards[1].getComponent(Card).index] = 2;
           if (this.matchedPairs == Math.floor((this.BOARD_WIDTH * this.BOARD_HEIGHT) / 2)) {
             log("Game Over");
+            UIManager.getInstance().showUI(GameOverPopup, { title: "You Win!", message: "Congratulations!" });
             SoundManager.getInstance().playEffect(SoundManager.WIN_EFFECT);
           }
         } else {
@@ -173,18 +182,23 @@ export class GameController extends Component {
           if (this.flippedCards[1]) {
             setTimeout(this.delayFlipBack.bind(this), 1000, this.flippedCards[1]);
           }
+
+          if (this.turnCount >= this.maxMove) {
+            log("Game Over");
+            UIManager.getInstance().showUI(GameOverPopup, { title: "You Lose!", message: "Try again!" });
+          }
         }
         this.flippedCards = [];
         this.updateLabels();
       }
-      LocalStorageManager.getInstance().saveBoard(this.BOARD_WIDTH, this.BOARD_HEIGHT, this.turnCount, this.matchedPairs, this.boardState, this.boardPairs);
+      LocalStorageManager.getInstance().saveBoard(this.BOARD_WIDTH, this.BOARD_HEIGHT, this.turnCount, this.matchedPairs, this.boardState, this.boardPairs, this.maxMove);
     }
   }
 
   delayFlipBack(c) {
     c.getComponent(Card).flipBack();
     this.boardState[c.getComponent(Card).index] = 0;
-    LocalStorageManager.getInstance().saveBoard(this.BOARD_WIDTH, this.BOARD_HEIGHT, this.turnCount, this.matchedPairs, this.boardState, this.boardPairs);
+    LocalStorageManager.getInstance().saveBoard(this.BOARD_WIDTH, this.BOARD_HEIGHT, this.turnCount, this.matchedPairs, this.boardState, this.boardPairs, this.maxMove);
     // log(this.boardState);
   }
 
